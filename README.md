@@ -9,7 +9,7 @@ We hope that this tool provides a simple way of ranking and comparing films base
 
 
 #### required modules: 
-* request
+* requests
 * pandas
 * numpy
 * BeautifulSoup
