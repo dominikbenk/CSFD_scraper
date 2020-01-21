@@ -18,8 +18,11 @@ from sklearn.linear_model import LinearRegression
 
 
 class csfd:
-
-    def __init__(self,number_of_pages,imdb_rating = True):
+    '''
+    The class scrapes and prepares the data from ČSFD for further analysis. Notice that we had to set the "user agent", otherwise the scraping would not be possible.
+    Optionally you may set the number of pages from which you would like to scrape the films (10 pages take around 15 minutes) or disable ratings from IMDb.
+    '''
+    def __init__(self,number_of_pages=1,imdb_rating = True):
         self.number_of_pages = number_of_pages
         self.imdb_rating = imdb_rating
         self.data = pd.DataFrame()
@@ -28,7 +31,9 @@ class csfd:
         self.headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36"}
 
     def FilmLinks(self):
-        
+        '''
+        The function gathers the links to the individual film pages using ČSFD's built-in search functionality.
+        '''
         for page in tqdm(range(1,1+self.number_of_pages),desc='Downloading film links from {} page(s)'.format(str(self.number_of_pages))):
             url = 'https://www.csfd.cz/podrobne-vyhledavani/strana-'+str(page)+'/?type%5B0%5D=0&genre%5Btype%5D=2&genre%5Binclude%5D%5B0%5D=&genre%5Bexclude%5D%5B0%5D=&origin%5Btype%5D=2&origin%5Binclude%5D%5B0%5D=&origin%5Bexclude%5D%5B0%5D=&year_from=&year_to=&rating_from=&rating_to=&actor=&director=&composer=&screenwriter=&author=&cinematographer=&production=&edit=&sound=&scenography=&mask=&costumes=&tag=&ok=Hledat&_form_=film'
             response = requests.get(url, headers = self.headers)
@@ -43,6 +48,10 @@ class csfd:
 
 
     def GetData(self):
+        '''
+        Scrapes the films' individual pages for the desired data. Multiple levels of exception were required, because of the inconsistency of english titles on ČSFD.
+        The search 
+        '''
         for filmurl in tqdm(self.FilmLinks(),desc='Downloading data for {} films'.format(str(len(self.filmlinks)))):
             response = requests.get(filmurl, headers = self.headers)
             souped = BeautifulSoup(response.text, 'html.parser')
@@ -84,7 +93,9 @@ class csfd:
             self.data = self.data.append(data,sort=False).reset_index(drop=True)
         
     def PrintData(self,n_rows=100):
-        
+        '''
+        Prints a table with the film data, adds posters. You may set the number of films to be shown.
+        '''
         def path_to_image_html(path):
             return '<img src="'+ path + '"/>'
         
@@ -92,18 +103,26 @@ class csfd:
         
         
 class ImdbRating:
-    
+    '''
+    The class scrapes and prepares the data from IMDb for further analysis. Required inputs are the title and year which will be passed from ČSFD.
+    '''
     def __init__(self,title,year):
         self.title = title
         self.year = year
         self.unaccented = unidecode.unidecode(self.title).replace(" ","+")
         
     def getAndParse(self,url):
+        '''
+        Initial parse.
+        '''
         result = requests.get(url)
         soup = BeautifulSoup(result.text, 'html.parser')
         return(soup)
     
-    def GetRatingLink(self):  
+    def GetRatingLink(self): 
+        '''
+        Gathers the links of the individual films.
+        '''
         search_pattern = "https://www.imdb.com/search/title/?title={}&release_date={}-01-01,{}-12-31"
         search_link = search_pattern.format(self.unaccented,self.year,self.year)
         soup = self.getAndParse(search_link)
@@ -112,6 +131,9 @@ class ImdbRating:
         return(rating_link)
     
     def GetRating(self):
+        '''
+        Collects the ratings for each individual film. Namely averages, male/female rating differences, us/non-us rating differences as well as whole rating distribution.
+        '''
         soup = self.getAndParse(self.GetRatingLink())
         average = float(soup.find(class_="inline-block ratings-imdb-rating").span.text)
         rating_distribution = [s.text for s in soup.find("div",class_="title-ratings-sub-page").table.find_all("div",class_="leftAligned")][1:]
@@ -172,6 +194,9 @@ class Ranker:
     
 
 class Visualize:
+    '''
+    Visualizes some interesting facts concerning the scraped data. You need to provide it with the data output from ČSFD scraper.
+    '''
     def __init__(self,scraped_data):
         self.scraped_data = scraped_data
         
